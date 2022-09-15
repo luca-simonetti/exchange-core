@@ -20,6 +20,7 @@ import exchange.core2.core.common.*;
 import exchange.core2.core.common.cmd.CommandResultCode;
 import exchange.core2.core.common.cmd.OrderCommand;
 import exchange.core2.core.common.config.LoggingConfiguration;
+import exchange.core2.core.utils.Range;
 import exchange.core2.core.utils.SerializationUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.openhft.chronicle.bytes.BytesIn;
@@ -43,6 +44,7 @@ public final class OrderBookNaiveImpl implements IOrderBook {
     private final OrderBookEventsHelper eventsHelper;
 
     private final boolean logDebug;
+    private long lastPrice;
 
     public OrderBookNaiveImpl(final CoreSymbolSpecification symbolSpec,
                               final ObjectsPool pool,
@@ -95,20 +97,33 @@ public final class OrderBookNaiveImpl implements IOrderBook {
                 newOrderMatchFokBudget(cmd);
                 break;
             // TODO IOC_BUDGET and FOK support
+            case STOP_LOSS:
+            case TAKE_PROFIT:
+                newOrderPlaceGtc(cmd, false);
+                break;
             default:
                 log.warn("Unsupported order type: {}", cmd);
                 eventsHelper.attachRejectEvent(cmd, cmd.size);
         }
     }
 
+    public long getLastPrice() {
+
+        return lastPrice;
+    }
     private void newOrderPlaceGtc(final OrderCommand cmd) {
+        newOrderPlaceGtc(cmd, true);
+    }
+
+    private void newOrderPlaceGtc(final OrderCommand cmd, boolean tryMatchInstantly) {
 
         final OrderAction action = cmd.action;
         final long price = cmd.price;
         final long size = cmd.size;
 
         // check if order is marketable (if there are opposite matching orders)
-        final long filledSize = tryMatchInstantly(cmd, subtreeForMatching(action, price), 0, cmd);
+        final long filledSize = tryMatchInstantly ? tryMatchInstantly(cmd, subtreeForMatching(action, price), 0, cmd)
+                : 0;
         if (filledSize == size) {
             // order was matched completely - nothing to place - can just return
             return;
@@ -130,8 +145,11 @@ public final class OrderBookNaiveImpl implements IOrderBook {
                 filledSize,
                 cmd.reserveBidPrice,
                 action,
+                cmd.orderType,
                 cmd.uid,
-                cmd.timestamp);
+                cmd.timestamp,
+                cmd.stopLoss,
+                cmd.takeProfit);
 
         getBucketsByAction(action)
                 .computeIfAbsent(price, OrdersBucketNaive::new)
@@ -240,9 +258,33 @@ public final class OrderBookNaiveImpl implements IOrderBook {
 
             final long sizeLeft = orderSize - filled;
 
-            final OrdersBucketNaive.MatcherResult bucketMatchings = bucket.match(sizeLeft, activeOrder, eventsHelper);
+            final OrdersBucketNaive.MatcherResult bucketMatchings = bucket.match(sizeLeft, activeOrder, eventsHelper,
+                    getLastPrice());
 
-            bucketMatchings.ordersToRemove.forEach(idMap::remove);
+            bucketMatchings.ordersToRemove.forEach(id -> {
+                Order o = idMap.get(id);
+                if (o.getType() != OrderType.STOP_LOSS && o.getType() != OrderType.TAKE_PROFIT) {
+                    final Range stopLoss = o.getStopLoss();
+                    final Range takeProfit = o.getTakeProfit();
+
+                    if (stopLoss != null) {
+                        newOrder(OrderCommand.newOrder(OrderType.STOP_LOSS, -o.getOrderId(),
+                                o.getUid(),
+                                stopLoss, 0, o.getSize(), OrderAction.ASK));
+                    }
+                    if (takeProfit != null) {
+                        newOrder(
+                                OrderCommand.newOrder(OrderType.TAKE_PROFIT, -o.getOrderId(), o.getUid(),
+                                        takeProfit, 0, o.getSize(), OrderAction.ASK));
+                    }
+
+                    if (stopLoss != null) {
+                        System.out.println("Hello world");
+                    }
+                }
+                idMap.remove(id);
+            });
+            // bucketMatchings.ordersToRemove.forEach(idMap::remove);
 
             filled += bucketMatchings.volume;
 
@@ -261,11 +303,12 @@ public final class OrderBookNaiveImpl implements IOrderBook {
 
             // remove empty buckets
             if (bucket.getTotalVolume() == 0) {
-                emptyBuckets.add(price);
+                emptyBuckets.add(bucket.getPrice());
             }
-
+            lastPrice = price;
             if (filled == orderSize) {
                 // enough matched
+
                 break;
             }
         }

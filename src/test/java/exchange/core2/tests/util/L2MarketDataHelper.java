@@ -34,6 +34,8 @@ public class L2MarketDataHelper {
     private long[] bidVolumes;
     private long[] bidOrders;
 
+    private long lastPrice;
+
     public L2MarketDataHelper(L2MarketData l2) {
         askPrices = Arrays.copyOf(l2.askPrices, l2.askPrices.length);
         askVolumes = Arrays.copyOf(l2.askVolumes, l2.askVolumes.length);
@@ -41,6 +43,7 @@ public class L2MarketDataHelper {
         bidPrices = Arrays.copyOf(l2.bidPrices, l2.bidPrices.length);
         bidVolumes = Arrays.copyOf(l2.bidVolumes, l2.bidVolumes.length);
         bidOrders = Arrays.copyOf(l2.bidOrders, l2.bidOrders.length);
+        lastPrice = l2.lastPrice;
     }
 
     public L2MarketData build() {
@@ -50,7 +53,8 @@ public class L2MarketDataHelper {
                 askOrders,
                 bidPrices,
                 bidVolumes,
-                bidOrders
+                bidOrders,
+                lastPrice
         );
     }
 

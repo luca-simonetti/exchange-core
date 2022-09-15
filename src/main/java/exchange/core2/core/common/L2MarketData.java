@@ -43,10 +43,13 @@ public final class L2MarketData {
     public long timestamp;
     public long referenceSeq;
 
+    public long lastPrice;
+
 //    public long totalVolumeAsk;
 //    public long totalVolumeBid;
 
-    public L2MarketData(long[] askPrices, long[] askVolumes, long[] askOrders, long[] bidPrices, long[] bidVolumes, long[] bidOrders) {
+public L2MarketData(long[] askPrices, long[] askVolumes, long[] askOrders, long[] bidPrices, long[] bidVolumes,
+        long[] bidOrders, long lastPrice) {
         this.askPrices = askPrices;
         this.askVolumes = askVolumes;
         this.askOrders = askOrders;
@@ -56,6 +59,7 @@ public final class L2MarketData {
 
         this.askSize = askPrices != null ? askPrices.length : 0;
         this.bidSize = bidPrices != null ? bidPrices.length : 0;
+        this.lastPrice = lastPrice;
     }
 
     public L2MarketData(int askSize, int bidSize) {
@@ -65,6 +69,7 @@ public final class L2MarketData {
         this.bidVolumes = new long[bidSize];
         this.askOrders = new long[askSize];
         this.bidOrders = new long[bidSize];
+        this.lastPrice = 0;
     }
 
     public long[] getAskPricesCopy() {
@@ -91,6 +96,10 @@ public final class L2MarketData {
         return Arrays.copyOf(bidOrders, bidSize);
     }
 
+    public long getLastPrice() {
+        return lastPrice;
+    }
+
     public long totalOrderBookVolumeAsk() {
         long totalVolume = 0L;
         for (int i = 0; i < askSize; i++) {
@@ -115,7 +124,8 @@ public final class L2MarketData {
                 getAskOrdersCopy(),
                 getBidPricesCopy(),
                 getBidVolumesCopy(),
-                getBidOrdersCopy());
+                getBidOrdersCopy(),
+                getLastPrice());
     }
 
     @Override

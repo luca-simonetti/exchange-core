@@ -16,6 +16,7 @@
 package exchange.core2.core.common.cmd;
 
 import exchange.core2.core.common.*;
+import exchange.core2.core.utils.Range;
 import lombok.*;
 
 import java.util.ArrayList;
@@ -50,6 +51,7 @@ public final class OrderCommand implements IOrder {
     @Getter
     public OrderAction action;
 
+    @Getter
     public OrderType orderType;
 
     @Getter
@@ -57,6 +59,10 @@ public final class OrderCommand implements IOrder {
 
     @Getter
     public long timestamp;
+    @Getter
+    public Range stopLoss;
+    @Getter
+    public Range takeProfit;
 
     public int userCookie;
 
@@ -84,6 +90,27 @@ public final class OrderCommand implements IOrder {
         cmd.orderId = orderId;
         cmd.uid = uid;
         cmd.price = price;
+        cmd.reserveBidPrice = reserveBidPrice;
+        cmd.size = size;
+        cmd.action = action;
+        cmd.orderType = orderType;
+        cmd.resultCode = CommandResultCode.VALID_FOR_MATCHING_ENGINE;
+        return cmd;
+    }
+
+    public static OrderCommand newOrder(OrderType orderType, long orderId, long uid, Range range,
+            long reserveBidPrice, long size, OrderAction action) {
+        OrderCommand cmd = new OrderCommand();
+        cmd.command = OrderCommandType.PLACE_ORDER;
+        cmd.orderId = orderId;
+        cmd.price = action.equals(OrderAction.ASK) ? range.getLow() : range.getHigh();
+        cmd.uid = uid;
+        if (action.equals(OrderAction.ASK)) {
+            cmd.stopLoss = range;
+        } else {
+            cmd.takeProfit = range;
+        }
+
         cmd.reserveBidPrice = reserveBidPrice;
         cmd.size = size;
         cmd.action = action;
@@ -212,4 +239,10 @@ public final class OrderCommand implements IOrder {
     public int stateHash() {
         throw new UnsupportedOperationException("Command does not represents state");
     }
+
+    @Override
+    public OrderType getType() {
+        return orderType;
+    }
+
 }

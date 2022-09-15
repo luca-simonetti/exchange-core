@@ -22,6 +22,7 @@ import exchange.core2.core.common.cmd.CommandResultCode;
 import exchange.core2.core.common.cmd.OrderCommand;
 import exchange.core2.core.common.cmd.OrderCommandType;
 import exchange.core2.core.common.config.LoggingConfiguration;
+import exchange.core2.core.utils.Range;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.openhft.chronicle.bytes.BytesIn;
@@ -218,13 +219,15 @@ public final class OrderBookDirectImpl implements IOrderBook {
         return Long.MAX_VALUE;
     }
 
+    private long lastPrice = -1;
 
     private long tryMatchInstantly(final IOrder takerOrder,
                                    final OrderCommand triggerCmd) {
 
         final boolean isBidAction = takerOrder.getAction() == OrderAction.BID;
 
-        final long limitPrice = (triggerCmd.command == OrderCommandType.PLACE_ORDER && triggerCmd.orderType == OrderType.FOK_BUDGET && !isBidAction)
+        final long limitPrice = (triggerCmd.command == OrderCommandType.PLACE_ORDER
+                && triggerCmd.orderType == OrderType.FOK_BUDGET && !isBidAction)
                 ? 0L
                 : takerOrder.getPrice();
 
@@ -295,7 +298,7 @@ public final class OrderBookDirectImpl implements IOrderBook {
             orderIdIndex.remove(makerOrder.orderId);
             objectsPool.put(ObjectsPool.DIRECT_ORDER, makerOrder);
 
-
+            lastPrice = tradeEvent.price;
             if (makerOrder == priceBucketTail) {
                 // reached current price tail -> remove bucket reference
                 final LongAdaptiveRadixTreeMap<Bucket> buckets = isBidAction ? askPriceBuckets : bidPriceBuckets;
@@ -314,6 +317,12 @@ public final class OrderBookDirectImpl implements IOrderBook {
 
         } while (makerOrder != null
                 && remainingSize > 0
+                && (takerOrder.getStopLoss() == null || (!isBidAction && takerOrder.getStopLoss() != null
+                        && takerOrder.getStopLoss().isInRange(getLastPrice())
+                        && takerOrder.getStopLoss().isInRange(makerOrder.price)))
+                && (takerOrder.getTakeProfit() == null || (isBidAction && takerOrder.getTakeProfit() != null
+                        && takerOrder.getTakeProfit().isInRange(getLastPrice())
+                        && takerOrder.getTakeProfit().isInRange(makerOrder.price)))
                 && (isBidAction ? makerOrder.price <= limitPrice : makerOrder.price >= limitPrice));
 
         // break chain after last order
@@ -725,6 +734,7 @@ public final class OrderBookDirectImpl implements IOrderBook {
         orderIdIndex.forEach((orderId, order) -> {
             if (order.uid == uid) {
                 list.add(Order.builder()
+                        .action(order.action)
                         .orderId(orderId)
                         .price(order.price)
                         .size(order.size)
@@ -823,6 +833,9 @@ public final class OrderBookDirectImpl implements IOrderBook {
         public OrderAction action;
 
         @Getter
+        public OrderType type;
+
+        @Getter
         public long uid;
 
         @Getter
@@ -838,6 +851,11 @@ public final class OrderBookDirectImpl implements IOrderBook {
         // previous order (to the tail of the queue, lower priority and worst price, towards the matching direction)
         DirectOrder prev;
 
+        @Getter
+        Range stopLoss;
+
+        @Getter
+        Range takeProfit;
 
         // public int userCookie;
 
@@ -921,5 +939,10 @@ public final class OrderBookDirectImpl implements IOrderBook {
         long volume;
         int numOrders;
         DirectOrder tail;
+    }
+
+    @Override
+    public long getLastPrice() {
+        return lastPrice;
     }
 }

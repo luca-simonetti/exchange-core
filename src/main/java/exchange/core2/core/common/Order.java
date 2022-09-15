@@ -25,6 +25,8 @@ import net.openhft.chronicle.bytes.WriteBytesMarshallable;
 
 import java.util.Objects;
 
+import exchange.core2.core.utils.Range;
+
 /**
  * Extending OrderCommand allows to avoid creating new objects
  * for instantly matching orders (MARKET or marketable LIMIT orders)
@@ -58,10 +60,19 @@ public final class Order implements WriteBytesMarshallable, IOrder {
     public OrderAction action;
 
     @Getter
+    public OrderType type;
+
+    @Getter
     public long uid;
 
     @Getter
     public long timestamp;
+
+    @Getter
+    public Range stopLoss;
+
+    @Getter
+    public Range takeProfit;
 
 //    public int userCookie;
 
@@ -74,9 +85,12 @@ public final class Order implements WriteBytesMarshallable, IOrder {
         this.filled = bytes.readLong(); // filled
         this.reserveBidPrice = bytes.readLong(); // price2
         this.action = OrderAction.of(bytes.readByte());
+        this.type = OrderType.of(bytes.readByte());
         this.uid = bytes.readLong(); // uid
         this.timestamp = bytes.readLong(); // timestamp
-//        this.userCookie = bytes.readInt();  // userCookie
+        this.stopLoss = Range.builder().high(bytes.readLong()).low(bytes.readLong()).build();
+        this.takeProfit = Range.builder().high(bytes.readLong()).low(bytes.readLong()).build();
+        // this.userCookie = bytes.readInt(); // userCookie
 
     }
 
@@ -88,8 +102,15 @@ public final class Order implements WriteBytesMarshallable, IOrder {
         bytes.writeLong(filled);
         bytes.writeLong(reserveBidPrice);
         bytes.writeByte(action.getCode());
+        bytes.writeByte((byte) 1/* type.getCode() */);
         bytes.writeLong(uid);
         bytes.writeLong(timestamp);
+        bytes.writeLong(stopLoss != null ? stopLoss.getHigh() : 0);
+        bytes.writeLong(stopLoss != null ? stopLoss.getLow() : 0);
+        bytes.writeLong(takeProfit != null ? takeProfit.getHigh() : 0);
+        bytes.writeLong(takeProfit != null ? takeProfit.getLow() : 0);
+        ;
+
 //        bytes.writeInt(userCookie);
     }
 
@@ -127,6 +148,8 @@ public final class Order implements WriteBytesMarshallable, IOrder {
                 && size == other.size
                 && reserveBidPrice == other.reserveBidPrice
                 && filled == other.filled
+                && stopLoss == other.stopLoss
+                && takeProfit == other.takeProfit
                 && uid == other.uid;
     }
 

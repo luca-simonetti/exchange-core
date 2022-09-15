@@ -18,6 +18,7 @@ package exchange.core2.core.common.api;
 
 import exchange.core2.core.common.OrderAction;
 import exchange.core2.core.common.OrderType;
+import exchange.core2.core.utils.Range;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,8 @@ public final class ApiPlaceOrder extends ApiCommand {
     public final int symbol;
     public final int userCookie;
     public final long reservePrice;
+    public final Range stopLoss;
+    public final Range takeProfit;
 
     @Override
     public String toString() {

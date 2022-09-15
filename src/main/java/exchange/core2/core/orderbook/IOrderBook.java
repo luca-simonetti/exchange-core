@@ -146,6 +146,7 @@ public interface IOrderBook extends WriteBytesMarshallable, StateHash {
         final L2MarketData data = new L2MarketData(asksSize, bidsSize);
         fillAsks(asksSize, data);
         fillBids(bidsSize, data);
+        data.lastPrice = getLastPrice();
         return data;
     }
 
@@ -172,6 +173,7 @@ public interface IOrderBook extends WriteBytesMarshallable, StateHash {
 
     int getTotalBidBuckets(int limit);
 
+    long getLastPrice();
 
     static CommandResultCode processCommand(final IOrderBook orderBook, final OrderCommand cmd) {
 

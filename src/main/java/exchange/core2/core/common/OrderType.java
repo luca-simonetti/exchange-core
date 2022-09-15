@@ -29,7 +29,11 @@ public enum OrderType {
 
     // Fill or Kill - execute immediately completely or not at all
     FOK(3), // with price cap
-    FOK_BUDGET(4); // total amount cap
+    FOK_BUDGET(4), // total amount cap
+    // Stop loss order - execute right after stock price reaches a price lower or
+    // equal to this. It will take the best price available
+    STOP_LOSS(5),
+    TAKE_PROFIT(6);
 
     private final byte code;
 
@@ -49,6 +53,10 @@ public enum OrderType {
                 return FOK;
             case 4:
                 return FOK_BUDGET;
+            case 5:
+                return STOP_LOSS;
+            case 6:
+                return TAKE_PROFIT;
             default:
                 throw new IllegalArgumentException("unknown OrderType:" + code);
         }

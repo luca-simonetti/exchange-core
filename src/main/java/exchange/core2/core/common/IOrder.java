@@ -15,6 +15,8 @@
  */
 package exchange.core2.core.common;
 
+import exchange.core2.core.utils.Range;
+
 public interface IOrder extends StateHash {
 
     long getPrice();
@@ -27,10 +29,16 @@ public interface IOrder extends StateHash {
 
     OrderAction getAction();
 
+    OrderType getType();
+
     long getOrderId();
 
     long getTimestamp();
 
     long getReserveBidPrice();
+
+    Range getStopLoss();
+
+    Range getTakeProfit();
 
 }

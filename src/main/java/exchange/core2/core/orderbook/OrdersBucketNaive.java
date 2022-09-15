@@ -19,6 +19,8 @@ import exchange.core2.core.common.IOrder;
 import exchange.core2.core.common.MatcherTradeEvent;
 import exchange.core2.core.common.Order;
 import exchange.core2.core.common.OrderAction;
+import exchange.core2.core.common.OrderType;
+import exchange.core2.core.utils.Range;
 import exchange.core2.core.utils.SerializationUtils;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -88,14 +90,17 @@ public final class OrdersBucketNaive implements Comparable<OrdersBucketNaive>, W
 
     /**
      * Collect a list of matching orders starting from eldest records
-     * Completely matching orders will be removed, partially matched order kept in the bucked.
+     * Completely matching orders will be removed, partially matched order kept in
+     * the bucked.
      *
      * @param volumeToCollect - volume to collect
      * @param activeOrder     - for getReserveBidPrice
      * @param helper          - events helper
+     * @param lastPrice       - current price to check against stop-loss orders
      * @return - total matched volume, events, completed orders to remove
      */
-    public MatcherResult match(long volumeToCollect, IOrder activeOrder, OrderBookEventsHelper helper) {
+    public MatcherResult match(long volumeToCollect, IOrder activeOrder, OrderBookEventsHelper helper,
+            long lastPrice) {
 
 //        log.debug("---- match: {}", volumeToCollect);
 
@@ -113,6 +118,15 @@ public final class OrdersBucketNaive implements Comparable<OrdersBucketNaive>, W
             final Map.Entry<Long, Order> next = iterator.next();
             final Order order = next.getValue();
 
+            if (order.getType() == OrderType.STOP_LOSS && Range.isValidRange(order.getStopLoss())
+                    && !order.getStopLoss().isInRange(lastPrice)) {
+                continue;
+            }
+            if (order.getType() == OrderType.TAKE_PROFIT && Range.isValidRange(order.getTakeProfit())
+                    && !order.getTakeProfit().isInRange(lastPrice)) {
+                continue;
+            }
+
             // calculate exact volume can fill for this order
 //            log.debug("volumeToCollect={} order: s{} f{}", volumeToCollect, order.size, order.filled);
             final long v = Math.min(volumeToCollect, order.size - order.filled);
@@ -128,6 +142,10 @@ public final class OrdersBucketNaive implements Comparable<OrdersBucketNaive>, W
 
             final long bidderHoldPrice = order.action == OrderAction.ASK ? activeOrder.getReserveBidPrice() : order.reserveBidPrice;
             final MatcherTradeEvent tradeEvent = helper.sendTradeEvent(order, fullMatch, volumeToCollect == 0, v, bidderHoldPrice);
+
+            if (order.type == OrderType.STOP_LOSS) {
+                System.out.println("hello");
+            }
 
             if (eventsTail == null) {
                 eventsHead = tradeEvent;

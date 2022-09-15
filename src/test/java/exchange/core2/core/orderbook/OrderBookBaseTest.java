@@ -96,7 +96,8 @@ public abstract class OrderBookBaseTest {
                         new long[]{2, 1, 1, 2},
                         new long[]{81593, 81590, 81200, 10000, 9136},
                         new long[]{40, 21, 20, 13, 2},
-                        new long[]{1, 2, 1, 2, 1}
+                        new long[] { 1, 2, 1, 2, 1 },
+                        0
                 )
         );
 
@@ -127,12 +128,13 @@ public abstract class OrderBookBaseTest {
 
         // match all bids
         long bidSum = Arrays.stream(snapshot.bidVolumes).sum();
-        IOrderBook.processCommand(orderBook, OrderCommand.newOrder(IOC, 100000000001L, -2, 1, 0, bidSum, ASK));
-
+        CommandResultCode result = IOrderBook.processCommand(orderBook,
+                OrderCommand.newOrder(IOC, 100000000001L, -2, 1, 0, bidSum, ASK));
+        assertEquals(CommandResultCode.SUCCESS, result);
 //        log.debug("{}", orderBook.getL2MarketDataSnapshot(Integer.MAX_VALUE).dumpOrderBook());
 
-        assertThat(orderBook.getL2MarketDataSnapshot(Integer.MAX_VALUE).askSize, is(0));
-        assertThat(orderBook.getL2MarketDataSnapshot(Integer.MAX_VALUE).bidSize, is(0));
+        assertThat("askSize should be 0",orderBook.getL2MarketDataSnapshot(Integer.MAX_VALUE).askSize, is(0));
+        assertThat("bidSize should be 0" ,orderBook.getL2MarketDataSnapshot(Integer.MAX_VALUE).bidSize, is(0));
 
         orderBook.validateInternalState();
     }
