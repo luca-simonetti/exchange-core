@@ -165,4 +165,38 @@ public final class OrderBookNaiveImplStopLossTest extends OrderBookBaseTest {
 
     }
 
+    final long UID_3 = 413L;
+    final long UID_4 = 414L;
+    final long UID_5 = 415L;
+
+    @Test
+    public void shouldCreateMultipleOrders() {
+
+        /*
+         * bid 100 x 100 sl 90-95
+         * bid 101 x 100
+         * ask 110 x 50
+         * ask 91 x 18
+         * ask 90 x 560
+         */
+
+        // UID_1 and UID_2 will bid
+        OrderCommand cmd = OrderCommand.newOrder(OrderType.GTC, 400000L, UID_1, 100, 100, 100, OrderAction.BID);
+        cmd.stopLoss = Range.builder().low(46).high(110).build();
+        processAndValidate(cmd, CommandResultCode.SUCCESS);
+
+        cmd = OrderCommand.newOrder(OrderType.GTC, 400001L, UID_2, 101, 100, 100, OrderAction.BID);
+        processAndValidate(cmd, CommandResultCode.SUCCESS);
+
+        cmd = OrderCommand.newOrder(OrderType.GTC, 400002L, UID_3, 110, 110, 50, OrderAction.ASK);
+        processAndValidate(cmd, CommandResultCode.SUCCESS);
+        cmd = OrderCommand.newOrder(OrderType.GTC, 400003L, UID_4, 91, 91, 18, OrderAction.ASK);
+        processAndValidate(cmd, CommandResultCode.SUCCESS);
+        cmd = OrderCommand.newOrder(OrderType.GTC, 400004L, UID_5, 90, 90, 560, OrderAction.ASK);
+        processAndValidate(cmd, CommandResultCode.SUCCESS);
+
+        // assertEquals(-1000, orderBook.getLastPrice());
+
+    }
+
 }
